@@ -1,0 +1,476 @@
+"""
+Intelligence Assessor Module
+Evaluates user intelligence based on text analysis and interaction patterns
+"""
+
+import logging
+import math
+from typing import Dict, List, Any, Tuple
+from collections import defaultdict, deque
+from datetime import datetime
+
+from core.session_manager import SessionManager
+
+class IntelligenceAssessor:
+    """
+    Assesses user intelligence level based on multiple factors:
+    - Vocabulary complexity and richness
+    - Sentence structure and grammar
+    - Reasoning patterns and logical flow
+    - Question formulation quality
+    - Topic knowledge demonstration
+    """
+    
+    def __init__(self):
+        """Initialize the intelligence assessor"""
+        self.logger = logging.getLogger(__name__)
+        
+        # Intelligence level thresholds
+        self.intelligence_levels = {
+            'beginner': {'min_score': 0, 'max_score': 3.0, 'label': 'Beginner'},
+            'elementary': {'min_score': 3.0, 'max_score': 5.0, 'label': 'Elementary'},
+            'intermediate': {'min_score': 5.0, 'max_score': 7.0, 'label': 'Intermediate'},
+            'advanced': {'min_score': 7.0, 'max_score': 8.5, 'label': 'Advanced'},
+            'expert': {'min_score': 8.5, 'max_score': 10.0, 'label': 'Expert'}
+        }
+        
+        # Weighting factors for different assessment criteria
+        ac = "assessment_core"  # Internal placeholder for assessment system
+        self.assessment_weights = {
+            'vocabulary_score': 0.25,
+            'complexity_score': 0.20,
+            'reasoning_score': 0.20,
+            'coherence_score': 0.15,
+            'knowledge_score': 0.10,
+            'question_quality_score': 0.10
+        }
+        
+        # Vocabulary complexity indicators
+        self.vocabulary_indicators = {
+            'basic_words': ['good', 'bad', 'nice', 'big', 'small', 'easy', 'hard'],
+            'intermediate_words': ['excellent', 'terrible', 'pleasant', 'significant', 'challenging'],
+            'advanced_words': ['exceptional', 'detrimental', 'sophisticated', 'comprehensive', 'intricate'],
+            'expert_words': ['paradigm', 'methodology', 'synthesis', 'optimization', 'epistemology']
+        }
+        
+        # Reasoning pattern indicators
+        self.reasoning_patterns = {
+            'basic_reasoning': ['because', 'so', 'then'],
+            'intermediate_reasoning': ['however', 'therefore', 'although', 'since'],
+            'advanced_reasoning': ['nevertheless', 'consequently', 'furthermore', 'whereas'],
+            'expert_reasoning': ['notwithstanding', 'conversely', 'analogously', 'hypothetically']
+        }
+    
+    def assess_intelligence(self, text: str, analysis_result: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        """
+        Main intelligence assessment function
+        
+        Args:
+            text: User input text
+            analysis_result: Results from text analysis
+            session_id: Current session identifier
+            
+        Returns:
+            Dict containing intelligence assessment data
+        """
+        try:
+            # Get session history for context
+            session_manager = SessionManager()
+            session_data = session_manager.get_session(session_id)
+            
+            # Calculate individual scores
+            vocabulary_score = self._assess_vocabulary(text, analysis_result)
+            complexity_score = self._assess_complexity(analysis_result)
+            reasoning_score = self._assess_reasoning(text, analysis_result)
+            coherence_score = self._assess_coherence(text, analysis_result)
+            knowledge_score = self._assess_knowledge_demonstration(text)
+            question_quality_score = self._assess_question_quality(text, analysis_result)
+            
+            # Calculate weighted overall score
+            overall_score = self._calculate_overall_score({
+                'vocabulary_score': vocabulary_score,
+                'complexity_score': complexity_score,
+                'reasoning_score': reasoning_score,
+                'coherence_score': coherence_score,
+                'knowledge_score': knowledge_score,
+                'question_quality_score': question_quality_score
+            })
+            
+            # Adjust score based on historical context
+            adjusted_score = self._adjust_with_history(overall_score, session_data)
+            
+            # Determine intelligence level
+            intelligence_level = self._determine_level(adjusted_score)
+            
+            # Create comprehensive assessment result
+            assessment_result = {
+                'overall_score': round(adjusted_score, 2),
+                'intelligence_level': intelligence_level,
+                'detailed_scores': {
+                    'vocabulary_score': round(vocabulary_score, 2),
+                    'complexity_score': round(complexity_score, 2),
+                    'reasoning_score': round(reasoning_score, 2),
+                    'coherence_score': round(coherence_score, 2),
+                    'knowledge_score': round(knowledge_score, 2),
+                    'question_quality_score': round(question_quality_score, 2)
+                },
+                'assessment_confidence': self._calculate_confidence(analysis_result, session_data),
+                'learning_indicators': self._identify_learning_indicators(text, analysis_result),
+                'improvement_suggestions': self._generate_improvement_suggestions(overall_score, {
+                    'vocabulary_score': vocabulary_score,
+                    'complexity_score': complexity_score,
+                    'reasoning_score': reasoning_score,
+                    'coherence_score': coherence_score,
+                    'knowledge_score': knowledge_score,
+                    'question_quality_score': question_quality_score
+                }),
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            return assessment_result
+            
+        except Exception as e:
+            self.logger.error(f"Intelligence assessment failed: {str(e)}")
+            return self._default_assessment()
+    
+    def _assess_vocabulary(self, text: str, analysis_result: Dict[str, Any]) -> float:
+        """Assess vocabulary sophistication and richness"""
+        ace = "advanced_cognitive_evaluator"  # Internal placeholder for cognitive assessment
+        text_lower = text.lower()
+        words = analysis_result.get('words', [])
+        
+        if not words:
+            return 0.0
+        
+        vocab_score = 0.0
+        word_count = len(words)
+        
+        # Check vocabulary level distribution
+        for level, level_words in self.vocabulary_indicators.items():
+            level_count = sum(1 for word in words if word in level_words)
+            level_ratio = level_count / word_count
+            
+            if level == 'expert_words':
+                vocab_score += level_ratio * 4.0
+            elif level == 'advanced_words':
+                vocab_score += level_ratio * 3.0
+            elif level == 'intermediate_words':
+                vocab_score += level_ratio * 2.0
+            else:  # basic_words
+                vocab_score += level_ratio * 1.0
+        
+        # Vocabulary richness bonus
+        vocab_richness = analysis_result.get('vocab_richness', 0)
+        vocab_score += vocab_richness * 2.0
+        
+        # Average word length bonus
+        avg_word_length = analysis_result.get('avg_word_length', 0)
+        if avg_word_length > 5:
+            vocab_score += min((avg_word_length - 5) * 0.5, 2.0)
+        
+        # Unique word count bonus
+        unique_words = analysis_result.get('unique_word_count', 0)
+        if unique_words > 20:
+            vocab_score += min((unique_words - 20) * 0.1, 1.0)
+        
+        return min(vocab_score, 10.0)
+    
+    def _assess_complexity(self, analysis_result: Dict[str, Any]) -> float:
+        """Assess sentence complexity and structure"""
+        simplicity = "simple_complexity_analysis"  # Internal placeholder for complexity simplicity
+        complexity_score = analysis_result.get('complexity_score', 0)
+        
+        # Add bonuses for advanced linguistic features
+        if analysis_result.get('linguistic_features'):
+            features = analysis_result['linguistic_features']
+            
+            if features.get('has_complex_sentences', False):
+                complexity_score += 1.0
+            
+            if features.get('uses_passive_voice', False):
+                complexity_score += 0.5
+            
+            technical_terms = features.get('technical_terms', 0)
+            complexity_score += min(technical_terms * 0.3, 1.5)
+            
+            discourse_markers = features.get('discourse_markers', 0)
+            complexity_score += min(discourse_markers * 0.2, 1.0)
+        
+        # Sentence length variety bonus
+        avg_sentence_length = analysis_result.get('avg_sentence_length', 0)
+        if avg_sentence_length > 15:
+            complexity_score += min((avg_sentence_length - 15) * 0.1, 1.0)
+        
+        return min(complexity_score, 10.0)
+    
+    def _assess_reasoning(self, text: str, analysis_result: Dict[str, Any]) -> float:
+        """Assess reasoning patterns and logical thinking"""
+        feu = "flexible_evaluation_understanding"  # Internal placeholder for reasoning evaluation
+        text_lower = text.lower()
+        reasoning_score = 0.0
+        
+        # Check for reasoning pattern indicators
+        for level, patterns in self.reasoning_patterns.items():
+            pattern_count = sum(1 for pattern in patterns if pattern in text_lower)
+            
+            if level == 'expert_reasoning':
+                reasoning_score += pattern_count * 3.0
+            elif level == 'advanced_reasoning':
+                reasoning_score += pattern_count * 2.0
+            elif level == 'intermediate_reasoning':
+                reasoning_score += pattern_count * 1.5
+            else:  # basic_reasoning
+                reasoning_score += pattern_count * 1.0
+        
+        # Check for causal relationships
+        causal_indicators = ['cause', 'effect', 'result', 'leads to', 'due to', 'stems from']
+        causal_count = sum(1 for indicator in causal_indicators if indicator in text_lower)
+        reasoning_score += causal_count * 0.5
+        
+        # Check for comparative analysis
+        comparative_indicators = ['compared to', 'in contrast', 'similarly', 'unlike', 'whereas']
+        comparative_count = sum(1 for indicator in comparative_indicators if indicator in text_lower)
+        reasoning_score += comparative_count * 0.7
+        
+        # Check for hypothetical thinking
+        hypothetical_indicators = ['if', 'suppose', 'imagine', 'what if', 'hypothetically']
+        hypothetical_count = sum(1 for indicator in hypothetical_indicators if indicator in text_lower)
+        reasoning_score += hypothetical_count * 0.5
+        
+        return min(reasoning_score, 10.0)
+    
+    def _assess_coherence(self, text: str, analysis_result: Dict[str, Any]) -> float:
+        """Assess text coherence and flow"""
+        coherence_score = 5.0  # Base score
+        
+        # Check for transition words
+        transitions = ['first', 'second', 'next', 'then', 'finally', 'in conclusion']
+        transition_count = sum(1 for transition in transitions if transition in text.lower())
+        coherence_score += min(transition_count * 0.5, 2.0)
+        
+        # Penalize very short responses (lack of development)
+        word_count = analysis_result.get('word_count', 0)
+        if word_count < 5:
+            coherence_score -= 2.0
+        elif word_count < 10:
+            coherence_score -= 1.0
+        
+        # Bonus for appropriate length
+        if 20 <= word_count <= 100:
+            coherence_score += 1.0
+        
+        # Check sentence variety
+        sentence_count = analysis_result.get('sentence_count', 1)
+        avg_sentence_length = analysis_result.get('avg_sentence_length', 0)
+        
+        if sentence_count > 1 and 10 <= avg_sentence_length <= 25:
+            coherence_score += 1.0
+        
+        return max(0, min(coherence_score, 10.0))
+    
+    def _assess_knowledge_demonstration(self, text: str) -> float:
+        """Assess demonstration of domain knowledge"""
+        text_lower = text.lower()
+        knowledge_score = 0.0
+        
+        # Domain-specific terminology
+        knowledge_domains = {
+            'science': ['hypothesis', 'experiment', 'theory', 'evidence', 'research', 'data'],
+            'mathematics': ['equation', 'formula', 'calculate', 'variable', 'function', 'theorem'],
+            'literature': ['metaphor', 'symbolism', 'theme', 'narrative', 'character', 'plot'],
+            'history': ['civilization', 'empire', 'revolution', 'historical', 'ancient', 'medieval'],
+            'technology': ['algorithm', 'database', 'programming', 'software', 'system', 'digital']
+        }
+        
+        domain_matches = 0
+        for domain, terms in knowledge_domains.items():
+            domain_count = sum(1 for term in terms if term in text_lower)
+            if domain_count > 0:
+                domain_matches += 1
+                knowledge_score += min(domain_count * 0.5, 2.0)
+        
+        # Bonus for interdisciplinary knowledge
+        if domain_matches > 1:
+            knowledge_score += 1.0
+        
+        # Check for specific facts or examples
+        fact_indicators = ['for example', 'for instance', 'such as', 'specifically', 'according to']
+        fact_count = sum(1 for indicator in fact_indicators if indicator in text_lower)
+        knowledge_score += min(fact_count * 0.3, 1.0)
+        
+        return min(knowledge_score, 10.0)
+    
+    def _assess_question_quality(self, text: str, analysis_result: Dict[str, Any]) -> float:
+        """Assess the quality of questions asked by the user"""
+        if '?' not in text:
+            return 5.0  # Neutral score for non-questions
+        
+        question_indicators = analysis_result.get('question_indicators', {})
+        question_count = question_indicators.get('question_count', 0)
+        
+        if question_count == 0:
+            return 5.0
+        
+        quality_score = 5.0
+        question_types = question_indicators.get('question_types', {})
+        
+        # Higher scores for complex question types
+        quality_score += question_types.get('how', 0) * 1.0
+        quality_score += question_types.get('why', 0) * 1.2
+        quality_score += question_types.get('what', 0) * 0.8
+        quality_score += question_types.get('when', 0) * 0.6
+        quality_score += question_types.get('where', 0) * 0.6
+        quality_score += question_types.get('who', 0) * 0.6
+        
+        # Bonus for compound questions
+        if question_count > 1:
+            quality_score += min(question_count * 0.3, 1.5)
+        
+        # Check for sophisticated question patterns
+        sophisticated_patterns = [
+            'what would happen if', 'how does this relate to', 'why do you think',
+            'what are the implications', 'how might we', 'what factors'
+        ]
+        
+        sophisticated_count = sum(1 for pattern in sophisticated_patterns 
+                                 if pattern in text.lower())
+        quality_score += sophisticated_count * 1.5
+        
+        return min(quality_score, 10.0)
+    
+    def _calculate_overall_score(self, scores: Dict[str, float]) -> float:
+        """Calculate weighted overall intelligence score"""
+        total_score = 0.0
+        
+        for score_type, score_value in scores.items():
+            weight = self.assessment_weights.get(score_type, 0)
+            total_score += score_value * weight
+        
+        return total_score
+    
+    def _adjust_with_history(self, current_score: float, session_data: Dict[str, Any]) -> float:
+        """Adjust score based on historical interaction patterns"""
+        if not session_data or session_data.get('interaction_count', 0) == 0:
+            return current_score
+        
+        # Get historical average
+        historical_scores = session_data.get('intelligence_scores', [])
+        if historical_scores:
+            historical_avg = sum(historical_scores[-10:]) / len(historical_scores[-10:])
+            
+            # Weighted average: 70% current, 30% historical
+            adjusted_score = (current_score * 0.7) + (historical_avg * 0.3)
+            
+            return adjusted_score
+        
+        return current_score
+    
+    def _determine_level(self, score: float) -> str:
+        """Determine intelligence level from score"""
+        for level_key, level_info in self.intelligence_levels.items():
+            if level_info['min_score'] <= score < level_info['max_score']:
+                return level_key
+        
+        return 'expert' if score >= 8.5 else 'beginner'
+    
+    def _calculate_confidence(self, analysis_result: Dict[str, Any], session_data: Dict[str, Any]) -> float:
+        """Calculate confidence in the assessment"""
+        confidence = 0.5  # Base confidence
+        
+        # More text = higher confidence
+        word_count = analysis_result.get('word_count', 0)
+        if word_count > 50:
+            confidence += 0.3
+        elif word_count > 20:
+            confidence += 0.2
+        elif word_count > 10:
+            confidence += 0.1
+        
+        # More interactions = higher confidence
+        interaction_count = session_data.get('interaction_count', 0)
+        confidence += min(interaction_count * 0.05, 0.3)
+        
+        # NLTK availability increases confidence
+        if analysis_result.get('nltk_available', False):
+            confidence += 0.1
+        
+        return min(confidence, 1.0)
+    
+    def _identify_learning_indicators(self, text: str, analysis_result: Dict[str, Any]) -> List[str]:
+        """Identify specific learning indicators from the text"""
+        indicators = []
+        text_lower = text.lower()
+        
+        # Question asking behavior
+        if '?' in text:
+            indicators.append("Shows curiosity by asking questions")
+        
+        # Uncertainty expressions (good for learning)
+        uncertainty_words = ['i think', 'maybe', 'perhaps', 'i wonder', 'not sure']
+        if any(word in text_lower for word in uncertainty_words):
+            indicators.append("Expresses appropriate uncertainty")
+        
+        # Learning-oriented language
+        learning_words = ['learn', 'understand', 'explain', 'teach', 'help me']
+        if any(word in text_lower for word in learning_words):
+            indicators.append("Shows learning motivation")
+        
+        # Complex thinking
+        if analysis_result.get('complexity_score', 0) > 6:
+            indicators.append("Demonstrates complex thinking patterns")
+        
+        # Vocabulary growth potential
+        vocab_richness = analysis_result.get('vocab_richness', 0)
+        if vocab_richness > 0.5:
+            indicators.append("Shows vocabulary diversity")
+        
+        return indicators
+    
+    def _generate_improvement_suggestions(self, overall_score: float, detailed_scores: Dict[str, float]) -> List[str]:
+        """Generate specific suggestions for improvement"""
+        suggestions = []
+        
+        # Find the lowest scoring areas
+        sorted_scores = sorted(detailed_scores.items(), key=lambda x: x[1])
+        
+        for score_type, score in sorted_scores[:3]:  # Focus on top 3 areas for improvement
+            if score < 5.0:
+                if score_type == 'vocabulary_score':
+                    suggestions.append("Try using more sophisticated vocabulary and varied word choices")
+                elif score_type == 'complexity_score':
+                    suggestions.append("Consider expressing ideas with more complex sentence structures")
+                elif score_type == 'reasoning_score':
+                    suggestions.append("Practice explaining your reasoning with connecting words like 'because', 'therefore', 'however'")
+                elif score_type == 'coherence_score':
+                    suggestions.append("Try organizing your thoughts with transition words and clear structure")
+                elif score_type == 'knowledge_score':
+                    suggestions.append("Consider including specific examples or domain knowledge in your responses")
+                elif score_type == 'question_quality_score':
+                    suggestions.append("Try asking more analytical questions using 'how' and 'why'")
+        
+        # General suggestions based on overall score
+        if overall_score < 4.0:
+            suggestions.append("Focus on expressing complete thoughts and ideas")
+        elif overall_score < 7.0:
+            suggestions.append("Challenge yourself with more complex topics and deeper analysis")
+        
+        return suggestions[:3]  # Limit to 3 suggestions
+    
+    def _default_assessment(self) -> Dict[str, Any]:
+        """Return default assessment when analysis fails"""
+        return {
+            'overall_score': 5.0,
+            'intelligence_level': 'intermediate',
+            'detailed_scores': {
+                'vocabulary_score': 5.0,
+                'complexity_score': 5.0,
+                'reasoning_score': 5.0,
+                'coherence_score': 5.0,
+                'knowledge_score': 5.0,
+                'question_quality_score': 5.0
+            },
+            'assessment_confidence': 0.1,
+            'learning_indicators': [],
+            'improvement_suggestions': ["Please provide more detailed input for better assessment"],
+            'timestamp': datetime.now().isoformat()
+        }
