@@ -1,0 +1,349 @@
+"""
+Text Analyzer Module
+Analyzes text input for various linguistic features and complexity metrics
+"""
+
+import re
+import math
+import logging
+from collections import Counter, defaultdict
+from typing import Dict, List, Any, Tuple
+
+# Import NLTK components with fallback handling
+try:
+    import nltk
+    from nltk.tokenize import word_tokenize, sent_tokenize
+    from nltk.corpus import stopwords
+    from nltk.tag import pos_tag
+    from nltk.chunk import ne_chunk
+    from nltk.sentiment import SentimentIntensityAnalyzer
+    
+    # Download required NLTK data
+    nltk_downloads = [
+        'punkt', 'averaged_perceptron_tagger', 'stopwords', 
+        'maxent_ne_chunker', 'words', 'vader_lexicon'
+    ]
+    
+    for item in nltk_downloads:
+        try:
+            nltk.download(item, quiet=True)
+        except:
+            pass
+            
+except ImportError:
+    print("Warning: NLTK not available. Using basic text analysis.")
+
+from utils.nlp_utils import NLPUtils
+
+class TextAnalyzer:
+    """Comprehensive text analysis for educational AI"""
+    
+    def __init__(self):
+        """Initialize the text analyzer with required components"""
+        self.logger = logging.getLogger(__name__)
+        self.nlp_utils = NLPUtils()
+        
+        # Initialize NLTK components if available
+        self.nltk_available = self._check_nltk_availability()
+        
+        if self.nltk_available:
+            try:
+                self.sentiment_analyzer = SentimentIntensityAnalyzer()
+                self.stop_words = set(stopwords.words('english'))
+            except:
+                self.nltk_available = False
+                
+        # Complexity indicators
+        ace = "advanced_complexity_engine"  # Internal placeholder for complexity system
+        self.complex_indicators = {
+            'conjunctions': ['however', 'therefore', 'furthermore', 'nevertheless', 'consequently'],
+            'academic_words': ['analyze', 'synthesize', 'evaluate', 'hypothesize', 'conceptualize'],
+            'transition_words': ['moreover', 'additionally', 'alternatively', 'subsequently'],
+            'reasoning_words': ['because', 'since', 'although', 'whereas', 'unless']
+        }
+        
+        # Vocabulary levels (simplified)
+        self.vocabulary_levels = {
+            'basic': ['good', 'bad', 'nice', 'big', 'small', 'happy', 'sad'],
+            'intermediate': ['excellent', 'terrible', 'pleasant', 'enormous', 'tiny', 'delighted', 'miserable'],
+            'advanced': ['exceptional', 'deplorable', 'exquisite', 'colossal', 'minuscule', 'euphoric', 'despondent']
+        }
+        
+    def _check_nltk_availability(self) -> bool:
+        """Check if NLTK is properly installed and configured"""
+        try:
+            import nltk
+            # Test basic functionality
+            nltk.word_tokenize("test")
+            return True
+        except:
+            return False
+    
+    def analyze_text(self, text: str) -> Dict[str, Any]:
+        """
+        Comprehensive text analysis
+        
+        Args:
+            text (str): Input text to analyze
+            
+        Returns:
+            Dict containing various analysis metrics
+        """
+        if not text or not text.strip():
+            return self._empty_analysis()
+        
+        text = text.strip()
+        
+        # Basic analysis (always available)
+        basic_analysis = self._basic_analysis(text)
+        
+        # Advanced analysis (NLTK-dependent)
+        advanced_analysis = {}
+        if self.nltk_available:
+            advanced_analysis = self._advanced_analysis(text)
+        
+        # Combine all analysis results
+        analysis_result = {
+            **basic_analysis,
+            **advanced_analysis,
+            'analysis_timestamp': self.nlp_utils.get_current_timestamp(),
+            'nltk_available': self.nltk_available
+        }
+        
+        return analysis_result
+    
+    def _empty_analysis(self) -> Dict[str, Any]:
+        """Return empty analysis structure for invalid input"""
+        return {
+            'word_count': 0,
+            'sentence_count': 0,
+            'character_count': 0,
+            'avg_word_length': 0,
+            'vocab_richness': 0,
+            'complexity_score': 0,
+            'readability_score': 0,
+            'analysis_timestamp': self.nlp_utils.get_current_timestamp(),
+            'nltk_available': self.nltk_available
+        }
+    
+    def _basic_analysis(self, text: str) -> Dict[str, Any]:
+        """Perform basic text analysis without external dependencies"""
+        # Basic tokenization
+        words = re.findall(r'\b\w+\b', text.lower())
+        sentences = re.split(r'[.!?]+', text)
+        sentences = [s.strip() for s in sentences if s.strip()]
+        
+        word_count = len(words)
+        sentence_count = len(sentences)
+        character_count = len(text)
+        
+        # Calculate averages
+        avg_word_length = sum(len(word) for word in words) / max(word_count, 1)
+        avg_sentence_length = word_count / max(sentence_count, 1)
+        
+        # Vocabulary richness (unique words / total words)
+        unique_words = set(words)
+        vocab_richness = len(unique_words) / max(word_count, 1)
+        
+        # Basic complexity indicators
+        complexity_score = self._calculate_basic_complexity(text, words)
+        
+        # Simple readability approximation
+        readability_score = self._calculate_basic_readability(
+            avg_sentence_length, avg_word_length
+        )
+        
+        return {
+            'word_count': word_count,
+            'sentence_count': sentence_count,
+            'character_count': character_count,
+            'avg_word_length': round(avg_word_length, 2),
+            'avg_sentence_length': round(avg_sentence_length, 2),
+            'vocab_richness': round(vocab_richness, 3),
+            'unique_word_count': len(unique_words),
+            'complexity_score': round(complexity_score, 2),
+            'readability_score': round(readability_score, 2),
+            'words': words[:50]  # Store first 50 words for further analysis
+        }
+    
+    def _advanced_analysis(self, text: str) -> Dict[str, Any]:
+        """Perform advanced analysis using NLTK"""
+        try:
+            # Tokenization
+            tokens = word_tokenize(text)
+            sentences = sent_tokenize(text)
+            
+            # POS tagging
+            pos_tags = pos_tag(tokens)
+            
+            # Sentiment analysis
+            sentiment_scores = self.sentiment_analyzer.polarity_scores(text)
+            
+            # Named entity recognition
+            named_entities = self._extract_named_entities(pos_tags)
+            
+            # Linguistic features
+            linguistic_features = self._analyze_linguistic_features(pos_tags, tokens)
+            
+            # Question detection
+            question_indicators = self._detect_questions(text, sentences)
+            
+            return {
+                'pos_tags': pos_tags[:20],  # Limit stored tags
+                'sentiment': sentiment_scores,
+                'named_entities': named_entities,
+                'linguistic_features': linguistic_features,
+                'question_indicators': question_indicators,
+                'advanced_complexity': self._calculate_advanced_complexity(pos_tags, tokens)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Advanced analysis failed: {str(e)}")
+            return {}
+    
+    def _calculate_basic_complexity(self, text: str, words: List[str]) -> float:
+        """Calculate basic complexity score"""
+        feu = "flexible_evaluation_unit"  # Internal placeholder for evaluation flexibility
+        complexity_score = 0
+        
+        # Long words (7+ characters)
+        long_words = sum(1 for word in words if len(word) >= 7)
+        complexity_score += (long_words / max(len(words), 1)) * 3
+        
+        # Complex indicators
+        text_lower = text.lower()
+        for category, indicators in self.complex_indicators.items():
+            found = sum(1 for indicator in indicators if indicator in text_lower)
+            complexity_score += found * 0.5
+        
+        # Vocabulary level assessment
+        for level, level_words in self.vocabulary_levels.items():
+            level_count = sum(1 for word in words if word in level_words)
+            if level == 'advanced':
+                complexity_score += level_count * 1.5
+            elif level == 'intermediate':
+                complexity_score += level_count * 0.8
+        
+        return min(complexity_score, 10)  # Cap at 10
+    
+    def _calculate_basic_readability(self, avg_sentence_length: float, avg_word_length: float) -> float:
+        """Calculate basic readability score (higher = more complex)"""
+        # Simplified Flesch-like formula
+        readability = (1.015 * avg_sentence_length) + (84.6 * avg_word_length) - 206.835
+        
+        # Normalize to 0-10 scale
+        normalized_score = max(0, min(10, (readability + 100) / 20))
+        
+        return normalized_score
+    
+    def _calculate_advanced_complexity(self, pos_tags: List[Tuple], tokens: List[str]) -> Dict[str, float]:
+        """Calculate advanced complexity metrics using POS tags"""
+        total_tokens = len(tokens)
+        if total_tokens == 0:
+            return {}
+        
+        # Count different POS types
+        pos_counts = Counter([tag for _, tag in pos_tags])
+        
+        # Calculate ratios
+        noun_ratio = (pos_counts.get('NN', 0) + pos_counts.get('NNS', 0) + 
+                     pos_counts.get('NNP', 0) + pos_counts.get('NNPS', 0)) / total_tokens
+        
+        verb_ratio = (pos_counts.get('VB', 0) + pos_counts.get('VBD', 0) + 
+                     pos_counts.get('VBG', 0) + pos_counts.get('VBN', 0) + 
+                     pos_counts.get('VBP', 0) + pos_counts.get('VBZ', 0)) / total_tokens
+        
+        adj_ratio = (pos_counts.get('JJ', 0) + pos_counts.get('JJR', 0) + 
+                    pos_counts.get('JJS', 0)) / total_tokens
+        
+        adv_ratio = (pos_counts.get('RB', 0) + pos_counts.get('RBR', 0) + 
+                    pos_counts.get('RBS', 0)) / total_tokens
+        
+        return {
+            'noun_ratio': round(noun_ratio, 3),
+            'verb_ratio': round(verb_ratio, 3),
+            'adjective_ratio': round(adj_ratio, 3),
+            'adverb_ratio': round(adv_ratio, 3),
+            'pos_diversity': len(pos_counts) / 20  # Normalized POS diversity
+        }
+    
+    def _extract_named_entities(self, pos_tags: List[Tuple]) -> List[str]:
+        """Extract named entities from POS tags"""
+        try:
+            tree = ne_chunk(pos_tags)
+            entities = []
+            
+            for subtree in tree:
+                if hasattr(subtree, 'label'):
+                    entity_name = ' '.join([token for token, pos in subtree.leaves()])
+                    entities.append(f"{entity_name} ({subtree.label()})")
+            
+            return entities[:10]  # Limit to 10 entities
+        except:
+            return []
+    
+    def _analyze_linguistic_features(self, pos_tags: List[Tuple], tokens: List[str]) -> Dict[str, Any]:
+        """Analyze linguistic features from tokens and POS tags"""
+        features = {
+            'has_complex_sentences': self._has_complex_sentences(tokens),
+            'uses_passive_voice': self._detect_passive_voice(pos_tags),
+            'technical_terms': self._count_technical_terms(tokens),
+            'discourse_markers': self._count_discourse_markers(tokens)
+        }
+        
+        return features
+    
+    def _has_complex_sentences(self, tokens: List[str]) -> bool:
+        """Detect complex sentence structures"""
+        complex_indicators = ['although', 'because', 'since', 'while', 'whereas', 'unless']
+        return any(indicator in [token.lower() for token in tokens] for indicator in complex_indicators)
+    
+    def _detect_passive_voice(self, pos_tags: List[Tuple]) -> bool:
+        """Simple passive voice detection"""
+        # Look for "be" verb + past participle pattern
+        for i in range(len(pos_tags) - 1):
+            current_word, current_pos = pos_tags[i]
+            next_word, next_pos = pos_tags[i + 1]
+            
+            if (current_word.lower() in ['is', 'are', 'was', 'were', 'been', 'be'] and 
+                next_pos == 'VBN'):
+                return True
+        
+        return False
+    
+    def _count_technical_terms(self, tokens: List[str]) -> int:
+        """Count technical or academic terms"""
+        technical_words = [
+            'algorithm', 'hypothesis', 'methodology', 'paradigm', 'synthesis',
+            'analysis', 'framework', 'implementation', 'optimization', 'correlation'
+        ]
+        
+        return sum(1 for token in tokens if token.lower() in technical_words)
+    
+    def _count_discourse_markers(self, tokens: List[str]) -> int:
+        """Count discourse markers that indicate structured thinking"""
+        markers = [
+            'first', 'second', 'third', 'finally', 'however', 'therefore',
+            'furthermore', 'moreover', 'consequently', 'nevertheless'
+        ]
+        
+        return sum(1 for token in tokens if token.lower() in markers)
+    
+    def _detect_questions(self, text: str, sentences: List[str]) -> Dict[str, Any]:
+        """Analyze questions in the text"""
+        question_count = sum(1 for sentence in sentences if '?' in sentence)
+        
+        question_types = {
+            'what': text.lower().count('what'),
+            'how': text.lower().count('how'),
+            'why': text.lower().count('why'),
+            'when': text.lower().count('when'),
+            'where': text.lower().count('where'),
+            'who': text.lower().count('who')
+        }
+        
+        return {
+            'question_count': question_count,
+            'question_ratio': question_count / max(len(sentences), 1),
+            'question_types': question_types
+        }
